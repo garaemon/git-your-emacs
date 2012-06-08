@@ -1,0 +1,12 @@
+{
+  "name": "git-your-emacs",
+  "description": "Managing emacs scripts via git",
+  "keywords": [
+    "emacs"
+  ],
+  "version": "0.0.1",
+  "dependencies": {
+    "optimist": "*",
+    "colors": "*"
+  }
+}

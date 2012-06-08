@@ -1,0 +1,54 @@
+#!/usr/bin/env node
+// -*- mode: javascript -*-
+/*
+  how to use it
+  git-your-emacs command arg0 arg1 ...
+  git-your-emacs update -- update all 
+ */
+var fs = require("fs");
+var path = require("path");
+var util = require("util")
+var path = require("path");
+var colors = require("colors");
+var exec = require('child_process').exec;
+// arguments
+var optimist = require("optimist")
+  .usage("Usage: $0 command [options]");
+
+
+var ARGV = optimist.argv;
+
+function updateMain() {
+  console.log("updating git-your-emacs");
+  exec("cd " + __dirname + " && git pull", function(err, stdout) {
+    if (err != null)
+      throw new Error("cannot update git");
+    else
+      console.log("done");
+  });
+};
+
+function main() {
+  // switch command
+  try {
+    if (ARGV._.length == 0) {
+      throw new Error("no command is specified");
+    }
+    else {
+      var command = ARGV._[0];
+      switch (command) {
+      case 'update':
+        updateMain();
+        break;
+      default:
+        throw new Error(command + " is not supported");
+      }
+    }
+  }
+  catch (e) {
+    console.log(e.toString().red);
+    console.log(optimist.help());
+  }
+};
+
+main();
