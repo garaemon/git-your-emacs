@@ -12,6 +12,10 @@ var path = require("path");
 var colors = require("colors");
 var exec = require('child_process').exec;
 
+function strEndsWith(str, suffix) {
+  return str.match(suffix + "$") == suffix;
+}
+
 function info(str) {
   console.log("[" + "INFO".green + "] " + str);
 };
@@ -24,27 +28,53 @@ function error(str) {
   console.log("[" + "ERROR".red + "] " + str);
 };
 
-function changeDirectory() {
-  return "cd " + __dirname + " && ";
+function genSymLinks() {
+  function _gemSymLinks(f) {
+    fs.stat(f, function(err, stats) {
+      if (err != null) {
+        throw err;
+      }
+      else {
+        if (stats.isDirectory()) {
+          fs.readdir(f, function(err, files) {
+            if (err != null) {
+              throw err;
+            }
+            else {
+              files.forEach(function(file) {
+                _gemSymLinks(path.join(f, file));
+              });
+            }
+          });
+        }
+        else {
+          if (strEndsWith(f, ".el")) {
+            exec(changeDirectory("emacs.d")
+                 + "ln -sf " + path.relative(path.join(__dirname, "emacs.d"), f)
+                 + " .");
+            console.log("f: " + f);
+          }
+        }
+      }
+    });
+  };
+  _gemSymLinks(path.join(__dirname, "modules"));
+};
+
+function changeDirectory(subdir) {
+  if (subdir)
+    return "cd " + path.join(__dirname, subdir) + " && ";
+  else
+    return "cd " + __dirname + " && ";
 }
 
 function submodules(cb) {
-  exec(changeDirectory() + "git submodule", function(err, stdout) {
+  fs.readdir(path.join(__dirname, "modules"), function(err, files) {
     if (err != null) {
-      throw new Error("cannot enumerate submodules");
+      throw err;
     }
     else {
-      // ' hash name branch'
-      var submodules = [];
-      var splitted_stdout = stdout.split("\n");
-      for (var i = 0; i < splitted_stdout.length; i++) {
-        var line = splitted_stdout[i];
-        var result = line.match(/^\s[0-9a-z]* (\S*)/);
-        if (result && result.length > 1) {
-          submodules.push(result[1]);
-        }
-      }
-      cb(submodules);
+      cb(files);
     }
   });
 };
@@ -61,12 +91,19 @@ function updateMain() {
     if (err != null)
       throw new Error("cannot update git");
     else {
-      info("updating submodules")
-      exec(changeDirectory() + "git submodule update", function(err, stdout) {
-        if (err != null)
-          throw new Error("cannot update git submodule");
-        else
-          info("done");
+      submodules(function(modules) {
+        modules.forEach(function(m) {
+          info("updating " + m);
+          exec("cd " + path.join(__dirname, m) + " && git pull", function(err, stdout) {
+            if (err != null) {
+              throw err;
+            }
+            else {
+              genSymLinks();
+              info("done updating " + m);
+            }
+          });
+        });
       });
     }
   });
@@ -82,18 +119,13 @@ function emacsInitMain() {
 function addModuleMain() {
   var submodule = ARGV._[1];
   info("adding " + submodule);
-  exec(changeDirectory() + "git submodule add " + submodule, function(err, stdout) {
+  exec(changeDirectory("modules") + "git clone " + submodule, function(err, stdout) {
     if (err != null) {
       throw err;
     }
     else {
-      exec(changeDirectory() + "git submodule update", function(err, stdout) {
-        console.log("updating submodules")
-        if (err != null)
-          throw err;
-        else
-          info("done");
-      });
+      genSymLinks();
+      info("done");
     }
   });
 };
@@ -103,31 +135,20 @@ function removeModuleMain() {
   info("removing " + submodule);
   submodules(function(modules) {
     if(modules.indexOf(submodule) != -1) {
-      var gitmodules_path = path.join(__dirname, ".gitmodules");
-      var gitmodules_regexp = new RegExp('\\\[submodule.*"' + submodule + '".*\n.*\n.*');
-      var new_gitmodules
-        = String(fs.readFileSync(gitmodules_path))
-        .replace(gitmodules_regexp, "");
-      fs.writeFileSync(gitmodules_path, new_gitmodules);
-      var gitconfig_path = path.join(__dirname, ".git", "config");
-      var gitconfig_regexp = new RegExp('\\\[submodule.*"' + submodule + '".*\n.*');
-      var new_gitconfig
-        = String(fs.readFileSync(gitconfig_path))
-        .replace(gitconfig_regexp, "");
-      fs.writeFileSync(gitconfig_path, new_gitconfig);
-      exec(changeDirectory() + "git rm -r --cached " + submodule, function(err) {
-        if (err != null)
+      exec("rm -rf " + path.join(__dirname, "modules", submodule), function(err, stdout) {
+        if (err != null) {
           throw err;
-        else
+        }
+        else {
+          genSymLinks();
           info("done");
+        }
       });
     }
     else {
       warn(("no such submodule: " + submodule));
     }
   });
-  
-  
 };
 
 var COMMANDS = {
@@ -159,6 +180,8 @@ function main() {
       throw new Error("no command is specified");
     }
     else {
+      if (!path.existsSync(__dirname, "modules"))
+        fs.mkdirSync(path.join(__dirname, "modules"));
       var command = ARGV._[0];
       for (var key in COMMANDS) {
         if (command == key) {
