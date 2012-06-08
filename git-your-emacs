@@ -58,7 +58,8 @@ function genSymLinks() {
       }
     });
   };
-  _gemSymLinks(path.join(__dirname, "modules"));
+    _gemSymLinks(path.join(__dirname, "modules"));
+    _gemSymLinks(path.join(__dirname, "elisps"));
 };
 
 function changeDirectory(subdir) {
