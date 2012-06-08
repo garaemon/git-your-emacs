@@ -87,7 +87,13 @@ function addModuleMain() {
       throw err;
     }
     else {
-      info("done");
+      exec(changeDirectory() + "git submodule update", function(err, stdout) {
+        console.log("updating submodules")
+        if (err != null)
+          throw err;
+        else
+          info("done");
+      });
     }
   });
 };
