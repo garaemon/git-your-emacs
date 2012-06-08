@@ -12,6 +12,18 @@ var path = require("path");
 var colors = require("colors");
 var exec = require('child_process').exec;
 
+function info(str) {
+  console.log("[" + "INFO".green + "] " + str);
+};
+
+function warn(str) {
+  console.log("[" + "WARN".yellow + "] " + str);
+};
+
+function error(str) {
+  console.log("[" + "ERROR".red + "] " + str);
+};
+
 function changeDirectory() {
   return "cd " + __dirname + " && ";
 }
@@ -44,17 +56,17 @@ function submodulesMain() {
 };
 
 function updateMain() {
-  console.log("updating git-your-emacs");
+  info("updating git-your-emacs");
   exec(changeDirectory() + "git pull", function(err, stdout) {
     if (err != null)
       throw new Error("cannot update git");
     else {
-      console.log("updating submodules")
+      info("updating submodules")
       exec(changeDirectory() + "git submodule update", function(err, stdout) {
         if (err != null)
           throw new Error("cannot update git submodule");
         else
-          console.log("done");
+          info("done");
       });
     }
   });
@@ -69,20 +81,20 @@ function emacsInitMain() {
 
 function addModuleMain() {
   var submodule = ARGV._[1];
-  console.log("adding " + submodule);
+  info("adding " + submodule);
   exec(changeDirectory() + "git submodule add " + submodule, function(err, stdout) {
     if (err != null) {
       throw err;
     }
     else {
-      console.log("done");
+      info("done");
     }
   });
 };
 
 function removeModuleMain() {
   var submodule = ARGV._[1];
-  console.log("removing " + submodule);
+  info("removing " + submodule);
   submodules(function(modules) {
     if(modules.indexOf(submodule) != -1) {
       var gitmodules_path = path.join(__dirname, ".gitmodules");
@@ -97,15 +109,15 @@ function removeModuleMain() {
         = String(fs.readFileSync(gitconfig_path))
         .replace(gitconfig_regexp, "");
       fs.writeFileSync(gitconfig_path, new_gitconfig);
-      exec(changeDirectory() + "git rm --cached " + submodule, function(err) {
+      exec(changeDirectory() + "git rm -r --cached " + submodule, function(err) {
         if (err != null)
           throw err;
         else
-          console.log("done");
+          info("done");
       });
     }
     else {
-      console.log(("no such submodule: " + submodule).yellow)
+      warn(("no such submodule: " + submodule));
     }
   });
   
@@ -152,7 +164,7 @@ function main() {
     }
   }
   catch (e) {
-    console.log(e.toString().red);
+    error(e.toString().red);
     console.log(optimist.help());
   }
 };
