@@ -89,7 +89,7 @@ var COMMANDS = {
   "add-module": {
     callback: addModuleMain
   },
-  "submodule": {
+  "submodules": {
     callback: submodulesMain
   }
 };
