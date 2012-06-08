@@ -11,12 +11,6 @@ var util = require("util")
 var path = require("path");
 var colors = require("colors");
 var exec = require('child_process').exec;
-// arguments
-var optimist = require("optimist")
-  .usage("Usage: $0 command [options]");
-
-
-var ARGV = optimist.argv;
 
 function changeDirectory() {
   return "cd " + __dirname + " && ";
@@ -81,16 +75,20 @@ function addModuleMain() {
 
 var COMMANDS = {
   "update": {
-    callback: updateMain
+    callback: updateMain,
+    description: "update all submodules"
   },
   "emacs-init": {
-    callback: emacsInitMain
+    callback: emacsInitMain,
+    description: "generate emacs lisp to load emacs files"
   },
   "add-module": {
-    callback: addModuleMain
+    callback: addModuleMain,
+    description: "add a new git submodule to git-your-emacs"
   },
   "submodules": {
-    callback: submodulesMain
+    callback: submodulesMain,
+    description: "list submodules"
   }
 };
 
@@ -116,4 +114,14 @@ function main() {
   }
 };
 
+// arguments
+var optimist = require("optimist");
+(function() {
+  var command_usage = "Usage: $0 command [options]";
+  for (var key in COMMANDS) {
+    command_usage += "\n  " + key + ": " + COMMANDS[key].description;
+  }
+  optimist.usage(command_usage);
+})();
+var ARGV = optimist.argv;
 main();
