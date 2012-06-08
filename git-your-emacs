@@ -48,8 +48,15 @@ function updateMain() {
   exec(changeDirectory() + "git pull", function(err, stdout) {
     if (err != null)
       throw new Error("cannot update git");
-    else
-      console.log("done");
+    else {
+      console.log("updating submodules")
+      exec(changeDirectory() + "git submodule update", function(err, stdout) {
+        if (err != null)
+          throw new Error("cannot update git submodule");
+        else
+          console.log("done");
+      });
+    }
   });
 };
 
@@ -73,6 +80,38 @@ function addModuleMain() {
   });
 };
 
+function removeModuleMain() {
+  var submodule = ARGV._[1];
+  console.log("removing " + submodule);
+  submodules(function(modules) {
+    if(modules.indexOf(submodule) != -1) {
+      var gitmodules_path = path.join(__dirname, ".gitmodules");
+      var gitmodules_regexp = new RegExp('\\\[submodule.*"' + submodule + '".*\n.*\n.*');
+      var new_gitmodules
+        = String(fs.readFileSync(gitmodules_path))
+        .replace(gitmodules_regexp, "");
+      fs.writeFileSync(gitmodules_path, new_gitmodules);
+      var gitconfig_path = path.join(__dirname, ".git", "config");
+      var gitconfig_regexp = new RegExp('\\\[submodule.*"' + submodule + '".*\n.*');
+      var new_gitconfig
+        = String(fs.readFileSync(gitconfig_path))
+        .replace(gitconfig_regexp, "");
+      fs.writeFileSync(gitconfig_path, new_gitconfig);
+      exec(changeDirectory() + "git rm --cached " + submodule, function(err) {
+        if (err != null)
+          throw err;
+        else
+          console.log("done");
+      });
+    }
+    else {
+      console.log(("no such submodule: " + submodule).yellow)
+    }
+  });
+  
+  
+};
+
 var COMMANDS = {
   "update": {
     callback: updateMain,
@@ -89,6 +128,10 @@ var COMMANDS = {
   "submodules": {
     callback: submodulesMain,
     description: "list submodules"
+  },
+  "remove-module": {
+    callback: removeModuleMain,
+    description: "remove a module"
   }
 };
 
