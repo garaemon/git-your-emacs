@@ -28,13 +28,25 @@ function submodules(cb) {
       throw new Error("cannot enumerate submodules");
     }
     else {
-      console.log(stdout);
+      // ' hash name branch'
+      var submodules = [];
+      var splitted_stdout = stdout.split("\n");
+      for (var i = 0; i < splitted_stdout.length; i++) {
+        var line = splitted_stdout[i];
+        var result = line.match(/^\s[0-9a-z]* (\S*)/);
+        if (result && result.length > 1) {
+          submodules.push(result[1]);
+        }
+      }
+      cb(submodules);
     }
   });
 };
 
 function submodulesMain() {
-  submodules();
+  submodules(function(modules) {
+    console.log(modules.join("\n"));
+  });
 };
 
 function updateMain() {
@@ -62,7 +74,6 @@ function addModuleMain() {
       throw err;
     }
     else {
-      // ' hash name branch'
       console.log("done");
     }
   });
