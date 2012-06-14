@@ -92,18 +92,26 @@ function updateMain() {
       throw new Error("cannot update git");
     else {
       submodules(function(modules) {
-        modules.forEach(function(m) {
-          info("updating " + m);
-          exec("cd " + path.join(__dirname, m) + " && git pull", function(err, stdout) {
-            if (err != null) {
-              throw err;
-            }
-            else {
-              genSymLinks();
-              info("done updating " + m);
-            }
-          });
-        });
+        function updateModule(ms) {
+          if (ms.length == 0) {
+            genSymLinks();
+            info("done updating");
+          }
+          else {
+            var m = ms[0];
+            info("updating " + m);
+            exec(changeDirectory(path.join("modules", m)) + "git pull", function(err, stdout) {
+              if (err != null) {
+                error("failed to update " + m);
+                throw err;
+              }
+              else {
+                updateModule(ms.slice(1, ms.length));
+              }
+            });
+          }
+        };
+        updateModule(modules);
       });
     }
   });
