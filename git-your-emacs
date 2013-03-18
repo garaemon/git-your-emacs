@@ -5,6 +5,7 @@
   git-your-emacs command arg0 arg1 ...
   git-your-emacs update -- update all 
  */
+var async = require("async");
 var fs = require("fs");
 var path = require("path");
 var util = require("util")
@@ -29,36 +30,41 @@ function error(str) {
 };
 
 function genSymLinks() {
-  function _gemSymLinks(f) {
-    fs.stat(f, function(err, stats) {
-      if (err != null) {
-        throw err;
-      }
-      else {
-        if (stats.isDirectory()) {
-          fs.readdir(f, function(err, files) {
-            if (err != null) {
-              throw err;
+    function _gemSymLinks(f) {
+	stats = fs.statSync(f)
+	if (stats.isDirectory()) {
+	    files = fs.readdirSync(f);
+	    // inner_tasks is List of List
+	    var inner_tasks = files.map(function(file) {
+		return _gemSymLinks(path.join(f, file));
+	    });
+	    return [].concat.apply([], inner_tasks);
+	}
+	else {
+            if (strEndsWith(f, ".el")) {
+		return [function(next) {
+		    console.log(changeDirectory("emacs.d")
+		  		+ "ln -sf " + path.relative(path.join(__dirname, "emacs.d"), f)
+		  		+ " .");
+		    exec(changeDirectory("emacs.d")
+			 + "ln -sf " + path.relative(path.join(__dirname, "emacs.d"), f)
+			 + " .", function(err, stdout, stderr) {
+			     next(err, null);
+			 });
+		}];
             }
-            else {
-              files.forEach(function(file) {
-                _gemSymLinks(path.join(f, file));
-              });
-            }
-          });
+	    else {
+		return [];
+	    }
         }
-        else {
-          if (strEndsWith(f, ".el")) {
-            exec(changeDirectory("emacs.d")
-                 + "ln -sf " + path.relative(path.join(__dirname, "emacs.d"), f)
-                 + " .");
-           }
-        }
-      }
+    }
+    var tasks_a = _gemSymLinks(path.join(__dirname, "modules"));
+    var tasks_b = _gemSymLinks(path.join(__dirname, "elisps"));
+    console.log(tasks_a);
+    console.log(tasks_b);
+    async.series(tasks_a.concat(tasks_b), function(err, results) {
+	if (err) throw err;
     });
-  };
-    _gemSymLinks(path.join(__dirname, "modules"));
-    _gemSymLinks(path.join(__dirname, "elisps"));
 };
 
 function changeDirectory(subdir) {
@@ -188,7 +194,7 @@ function main() {
       throw new Error("no command is specified");
     }
     else {
-      if (!path.existsSync(__dirname, "modules"))
+      if (!fs.existsSync(__dirname, "modules"))
         fs.mkdirSync(path.join(__dirname, "modules"));
       var command = ARGV._[0];
       for (var key in COMMANDS) {
